@@ -1,6 +1,6 @@
 import numpy as np
 
-from scipy.ndimage import zoom
+from scipy.misc import imresize
 
 class YUV:
     def __init__(self, filename, size,num_bit):
@@ -24,8 +24,8 @@ class YUV:
             u = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma)
             raw = self.f.read(self.frame_len_chroma)
             v = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma)
-            u = zoom(u, self.shape_luma[0]/self.shape_chroma[0])
-            v = zoom(v, self.shape_luma[0]/self.shape_chroma[0])
+            u = imresize(u, self.shape_luma)
+            v = imresize(v, self.shape_luma)
             if self.num_bits==10 or self.num_bits==16:
                 y = y/(2^self.num_bits)
                 u = u/(2^self.num_bits)
