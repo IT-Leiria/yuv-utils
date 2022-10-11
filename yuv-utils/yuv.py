@@ -39,7 +39,7 @@ class YUV:
         return True, yuv
  
     def read(self):
-        ret, yuv = self.read_raw()
+        ret, yuv = self.__read_raw()
         if not ret:
             return ret, yuv
         # bgr = cv2.cvtColor(yuv, cv2.COLOR_lumaCrCb2RGB)#cv2.COLOR_lumaUV2BGR_NV21)
