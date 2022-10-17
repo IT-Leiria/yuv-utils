@@ -1,48 +1,81 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
-from scipy.misc import imresize
+from PIL import Image
 
 class YUV:
     def __init__(self, filename, size,num_bit):
-        self.height, self.width = size
+        self.width, self.height = size
         self.frame_len_luma = int((self.width * self.height*np.ceil(num_bit/8)))
         self.frame_len_chroma = int((self.width * self.height*np.ceil(num_bit/8))//4)
         self.f = open(filename, 'rb')
         self.shape_luma = (int(self.width), int(self.height))
         self.shape_chroma = (int(self.width/2), int(self.height/2))
         self.num_bits = num_bit
- 
-    def __read_raw(self):
-        try:
-            if self.num_bits==8:
-                dtipo= np.uint8
-            elif self.num_bits==10 or self.num_bits==16:
-                dtipo= np.uint16
-            raw = self.f.read(self.frame_len_luma)
-            y = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_luma)
-            raw = self.f.read(self.frame_len_chroma)
-            u = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma)
-            raw = self.f.read(self.frame_len_chroma)
-            v = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma)
-            u = imresize(u, self.shape_luma)
-            v = imresize(v, self.shape_luma)
-            if self.num_bits==10 or self.num_bits==16:
-                y = y/(2^self.num_bits)
-                u = u/(2^self.num_bits)
-                v = v/(2^self.num_bits)
-                # yuv = np.uint8(cv2.merge((y, u, v))*255)
-            yuv = np.uint8(np.stack([y, u, v], axis=2))
-
-        except Exception as e:
-            print(str(e))
-            return False, None
-        return True, yuv
+        
+    def __normalise(self, I):
+        # return (I.astype(float) - float(np.min(I)))/(float(np.max(I)))
+        aux = I.astype(float) - float(np.min(I))
+        aux = aux/np.max(aux)
+        return aux
  
     def read(self):
-        ret, yuv = self.__read_raw()
-        if not ret:
-            return ret, yuv
-        # bgr = cv2.cvtColor(yuv, cv2.COLOR_lumaCrCb2RGB)#cv2.COLOR_lumaUV2BGR_NV21)
-        # return ret, bgr
-        return yuv
+        if self.num_bits==8:
+            dtipo = np.uint8
+        elif self.num_bits==10 or self.num_bits==16:
+            dtipo = np.uint16
 
+        raw = self.f.read(self.frame_len_luma)
+        y = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_luma[::-1])
+        raw = self.f.read(self.frame_len_chroma)
+        u = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma[::-1])
+        raw = self.f.read(self.frame_len_chroma)
+        v = np.frombuffer(raw, dtype=dtipo).reshape(self.shape_chroma[::-1])
+
+        u = np.array(Image.fromarray(u).resize(self.shape_luma, Image.Resampling.LANCZOS))
+        v = np.array(Image.fromarray(v).resize(self.shape_luma, Image.Resampling.LANCZOS))
+
+        if self.num_bits==10 or self.num_bits==16:
+            y = y/(2^self.num_bits)
+            u = u/(2^self.num_bits)
+            v = v/(2^self.num_bits)
+
+        # self.yuv = np.uint8(np.stack([y, u, v], axis=2))
+        self.yuv = self.__normalise(np.stack([y, u, v], axis=2))
+
+    def to_rgb(self):
+        r = self.yuv[:,:,0] + 1.13983 * self.yuv[:,:,2]
+        g = self.yuv[:,:,0] - 0.39465 * self.yuv[:,:,1] - 0.58060 * self.yuv[:,:,2]         
+        b = self.yuv[:,:,0] - 2.03211 * self.yuv[:,:,1]         
+        
+        # self.rgb = np.uint8(np.stack([r, g, b], axis=2))
+        self.rgb = self.__normalise(np.stack([r, g, b], axis=2))
+
+    def show_vvc_overlay(self, file_path):
+        fig, ax = plt.subplots()
+        # TODO make RGB work
+        # self.to_rgb()
+        # ax.imshow(self.rgb)
+        ax.imshow(self.yuv[:,:,0], cmap='gray')
+        
+        with open(file_path, 'r') as f:
+            for line in f:
+                if not ('chroma' in line):
+                    p = line.split()
+
+                    x = float(p[0].strip()[2:-1])
+                    y = float(p[1].strip()[2:-1])
+                    w = float(p[2].strip()[2:-1])
+                    h = float(p[3].strip()[2:-1])
+                    
+                    r = patches.Rectangle((x, y), w, h, linewidth=0.5, edgecolor='r', facecolor='none')
+                    
+                    ax.add_patch(r)
+                    
+        plt.show()
+
+if __name__ == '__main__':
+    yuv = YUV(r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\RAISE_Test_2304x1536.yuv', (2304,1536), 8)      
+    yuv.read()
+    yuv.show_vvc_overlay(r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\trace.csv')
