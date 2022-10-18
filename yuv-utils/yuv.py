@@ -52,30 +52,49 @@ class YUV:
         # self.rgb = np.uint8(np.stack([r, g, b], axis=2))
         self.rgb = self.__normalise(np.stack([r, g, b], axis=2))
 
-    def show_vvc_overlay(self, file_path):
+    def show_vvc_overlay(self, file_path, linewidth=0.5):
         fig, ax = plt.subplots()
         # TODO make RGB work
         # self.to_rgb()
         # ax.imshow(self.rgb)
         ax.imshow(self.yuv[:,:,0], cmap='gray')
         
-        with open(file_path, 'r') as f:
-            for line in f:
-                if not ('chroma' in line):
-                    p = line.split()
+        if not isinstance(file_path, list):
+            with open(file_path, 'r') as f:
+                for line in f:
+                    if not ('chroma' in line):
+                        p = line.split()
 
-                    x = float(p[0].strip()[2:-1])
-                    y = float(p[1].strip()[2:-1])
-                    w = float(p[2].strip()[2:-1])
-                    h = float(p[3].strip()[2:-1])
-                    
-                    r = patches.Rectangle((x, y), w, h, linewidth=0.5, edgecolor='r', facecolor='none')
-                    
-                    ax.add_patch(r)
-                    
+                        x = float(p[0].strip()[2:-1])
+                        y = float(p[1].strip()[2:-1])
+                        w = float(p[2].strip()[2:-1])
+                        h = float(p[3].strip()[2:-1])
+                
+                        r = patches.Rectangle((x, y), w, h, linewidth=0.5, edgecolor='r', facecolor='none')
+                
+                        ax.add_patch(r)
+        else:
+            colours = ['r','b','g']
+            lwidths = [2, 1, 3]
+            for i in range(len(file_path)):
+                with open(file_path[i], 'r') as f:
+                    for line in f:
+                        if not ('chroma' in line):
+                            p = line.split()
+
+                            x = float(p[0].strip()[2:-1])
+                            y = float(p[1].strip()[2:-1])
+                            w = float(p[2].strip()[2:-1])
+                            h = float(p[3].strip()[2:-1])
+                
+                            r = patches.Rectangle((x, y), w, h, linewidth=lwidths[i], edgecolor=colours[i], facecolor='none', alpha=0.5)
+                
+                            ax.add_patch(r)
+                
         plt.show()
 
 if __name__ == '__main__':
     yuv = YUV(r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\RAISE_Test_2304x1536.yuv', (2304,1536), 8)      
     yuv.read()
-    yuv.show_vvc_overlay(r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\trace.csv')
+    # yuv.show_vvc_overlay(r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\trace.csv')
+    yuv.show_vvc_overlay([r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\fast_trace.csv',r'C:\Users\jn_fi\Documents\GitHub\yuv-utils\yuv-utils\ref_trace.csv'])
